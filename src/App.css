@@ -40,3 +40,181 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Word Train styles */
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+  justify-content: space-between;
+}
+
+.row input[type="number"] {
+  width: 6rem;
+}
+
+.row.checkbox {
+  gap: 0.5rem;
+  justify-content: flex-start;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.hint {
+  color: #888;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.players-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.player-row.sortable {
+  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.player-row[data-dragging='true'] {
+  background: rgba(100, 108, 255, 0.08);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+.player-row .name {
+  flex: 1;
+  padding: 0.5rem;
+}
+
+.player-row .reorder button {
+  width: 2.2rem;
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.75);
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-overlay {
+  background: rgba(36, 36, 36, 0.95);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  padding: 0.4rem;
+  transform: scale(1.02);
+}
+
+.bot-flag {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.status {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.player-pill {
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.player-pill.current {
+  border-color: #646cff;
+  background: rgba(100, 108, 255, 0.15);
+}
+
+.bot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.85rem;
+}
+
+.input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.input-row input {
+  flex: 1;
+  padding: 0.6rem;
+}
+
+.error {
+  color: #ff6b6b;
+  margin-top: 0.5rem;
+}
+
+.history {
+  text-align: left;
+}
+
+.history ol {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+
+.history li {
+  margin: 0.2rem 0;
+}
+
+.definition {
+  font-size: 0.92rem;
+  color: #b9b9b9;
+  margin-left: 0.5rem;
+}
+
+.gameover {
+  text-align: center;
+}
