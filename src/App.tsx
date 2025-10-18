@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, Fragment } from 'react'
 import './App.css'
 import {
   DndContext,
@@ -51,10 +51,11 @@ function App() {
 
   const { theme, toggleTheme } = useTheme()
 
-  const { games, upsert, remove } = useSavedGames()
+  const { games, upsert, remove, rename } = useSavedGames()
   const [currentGameId, setCurrentGameId] = useState<string | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [rules, setRules] = useState<Rules>({
+    start: { enabled: false, mode: 'must_start', letter: '' },
     end: { enabled: false, mode: 'must_end', letter: '' },
     length: { enabled: false, mode: 'must_be', value: null },
     contain: { enabled: false, mode: 'must_contain', letter: '' },
@@ -65,6 +66,7 @@ function App() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   )
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [playerRulesOpen, setPlayerRulesOpen] = useState<Record<string, boolean>>({})
 
   // word list now provided by useWordList
 
@@ -226,6 +228,13 @@ function App() {
     }
   }
 
+  function getRuleSet(playerId?: string) {
+    if (!rules.perPlayer || !playerId) return rules
+    const mode = rules.playerModes?.[playerId] ?? 'global'
+    if (mode === 'custom') return rules.playerRules?.[playerId] ?? rules
+    return rules
+  }
+
   function rulesApplyFor(playerId?: string): boolean {
     if (!rules.perPlayer) return true
     if (!playerId) return true
@@ -235,45 +244,56 @@ function App() {
 
   function wordPassesRules(w: string, playerId?: string): boolean {
     if (!rulesApplyFor(playerId)) return true
-    // end rule
-    if (rules.end.enabled && rules.end.letter) {
-      const last = rules.end.letter[0]
+    const r = getRuleSet(playerId)
+    if (r.start.enabled && r.start.letter) {
+      const ch = r.start.letter[0]
+      const has = w.startsWith(ch)
+      if (r.start.mode === 'must_start' && !has) return false
+      if (r.start.mode === 'must_not_start' && has) return false
+    }
+    if (r.end.enabled && r.end.letter) {
+      const last = r.end.letter[0]
       const has = w.endsWith(last)
-      if (rules.end.mode === 'must_end' && !has) return false
-      if (rules.end.mode === 'must_not_end' && has) return false
+      if (r.end.mode === 'must_end' && !has) return false
+      if (r.end.mode === 'must_not_end' && has) return false
     }
-    // length rule
-    if (rules.length.enabled && rules.length.value != null) {
+    if (r.length.enabled && r.length.value != null) {
       const len = w.length
-      if (rules.length.mode === 'must_be' && len !== rules.length.value) return false
-      if (rules.length.mode === 'must_not_be' && len === rules.length.value) return false
+      if (r.length.mode === 'must_be' && len !== r.length.value) return false
+      if (r.length.mode === 'must_not_be' && len === r.length.value) return false
     }
-    // contain rule
-    if (rules.contain.enabled && rules.contain.letter) {
-      const has = w.includes(rules.contain.letter[0])
-      if (rules.contain.mode === 'must_contain' && !has) return false
-      if (rules.contain.mode === 'must_not_contain' && has) return false
+    if (r.contain.enabled && r.contain.letter) {
+      const has = w.includes(r.contain.letter[0])
+      if (r.contain.mode === 'must_contain' && !has) return false
+      if (r.contain.mode === 'must_not_contain' && has) return false
     }
     return true
   }
 
   function validateRules(w: string, playerId?: string): string | null {
     if (!rulesApplyFor(playerId)) return null
-    if (rules.end.enabled && rules.end.letter) {
-      const last = rules.end.letter[0]
+    const r = getRuleSet(playerId)
+    if (r.start.enabled && r.start.letter) {
+      const ch = r.start.letter[0]
+      const has = w.startsWith(ch)
+      if (r.start.mode === 'must_start' && !has) return `Word must start with "${ch}"`
+      if (r.start.mode === 'must_not_start' && has) return `Word must not start with "${ch}"`
+    }
+    if (r.end.enabled && r.end.letter) {
+      const last = r.end.letter[0]
       const has = w.endsWith(last)
-      if (rules.end.mode === 'must_end' && !has) return `Word must end with "${last}"`
-      if (rules.end.mode === 'must_not_end' && has) return `Word must not end with "${last}"`
+      if (r.end.mode === 'must_end' && !has) return `Word must end with "${last}"`
+      if (r.end.mode === 'must_not_end' && has) return `Word must not end with "${last}"`
     }
-    if (rules.length.enabled && rules.length.value != null) {
-      if (rules.length.mode === 'must_be' && w.length !== rules.length.value) return `Word must be ${rules.length.value} letters`
-      if (rules.length.mode === 'must_not_be' && w.length === rules.length.value) return `Word must not be ${rules.length.value} letters`
+    if (r.length.enabled && r.length.value != null) {
+      if (r.length.mode === 'must_be' && w.length !== r.length.value) return `Word must be ${r.length.value} letters`
+      if (r.length.mode === 'must_not_be' && w.length === r.length.value) return `Word must not be ${r.length.value} letters`
     }
-    if (rules.contain.enabled && rules.contain.letter) {
-      const ch = rules.contain.letter[0]
+    if (r.contain.enabled && r.contain.letter) {
+      const ch = r.contain.letter[0]
       const has = w.includes(ch)
-      if (rules.contain.mode === 'must_contain' && !has) return `Word must contain "${ch}"`
-      if (rules.contain.mode === 'must_not_contain' && has) return `Word must not contain "${ch}"`
+      if (r.contain.mode === 'must_contain' && !has) return `Word must contain "${ch}"`
+      if (r.contain.mode === 'must_not_contain' && has) return `Word must not contain "${ch}"`
     }
     return null
   }
@@ -374,7 +394,19 @@ function App() {
     setCurrentGameId(g.id)
     // Load saved definitions and rules if present (legacy saves may miss these fields)
     if ((g as any).defsByWord) setDefsByWord((g as any).defsByWord)
-    if ((g as any).rules) setRules((g as any).rules)
+    if ((g as any).rules) {
+      const sr: any = (g as any).rules
+      setRules((prev) => ({
+        ...prev,
+        ...sr,
+        start: sr.start ?? prev.start,
+        end: { ...prev.end, ...(sr.end ?? {}) },
+        length: { ...prev.length, ...(sr.length ?? {}) },
+        contain: { ...prev.contain, ...(sr.contain ?? {}) },
+        playerModes: { ...(prev.playerModes ?? {}), ...(sr.playerModes ?? {}) },
+        playerRules: { ...(prev.playerRules ?? {}), ...(sr.playerRules ?? {}) },
+      }))
+    }
   }
 
   function resetToSetup() {
@@ -450,11 +482,15 @@ function App() {
                 games.map((g) => (
                   <div className="saved-card" key={g.id}>
                     <div className="saved-info">
-                      <div className="saved-title">{new Date(g.savedAt).toLocaleString()}</div>
+                      <div className="saved-title">{g.title ? g.title : new Date(g.savedAt).toLocaleString()}</div>
                       <div className="saved-sub">{g.players.length} players • {g.turns.length} turns</div>
                     </div>
                     <div className="saved-actions">
                       <button className="secondary" onClick={() => handleContinueFromSaved(g.id)}>Continue</button>
+                      <button className="secondary" onClick={() => {
+                        const title = prompt('Enter a name for this save', g.title ?? '')
+                        if (title != null) rename(g.id, title)
+                      }}>Rename</button>
                       <button className="secondary" onClick={() => remove(g.id)} title="Delete save"><Trash2 size={14} /></button>
                     </div>
                   </div>
@@ -483,6 +519,7 @@ function App() {
                     upsert({
                       id,
                       savedAt: Date.now(),
+                      title: json.title ?? undefined,
                       players: json.players ?? [],
                       turns: json.turns ?? [],
                       startingWord: json.startingWord ?? null,
@@ -507,11 +544,18 @@ function App() {
           <h2>Players and order</h2>
           <div className="row" style={{ justifyContent: 'flex-start', gap: 8 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="checkbox"
-                checked={!!rules.perPlayer}
-                onChange={(e) => setRules({ ...rules, perPlayer: e.target.checked })}
-              />
+              <div className="checkbox-wrapper-30">
+                <span className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={!!rules.perPlayer}
+                    onChange={(e) => setRules({ ...rules, perPlayer: e.target.checked })}
+                  />
+                  <svg>
+                    <use xlinkHref="#checkbox-30" className="checkbox"></use>
+                  </svg>
+                </span>
+              </div>
               Apply rules per player
             </label>
           </div>
@@ -523,7 +567,38 @@ function App() {
           {rulesOpen && (
             <div className="rules">
               <label className="rule-row">
-                <input type="checkbox" checked={rules.end.enabled} onChange={(e) => setRules({ ...rules, end: { ...rules.end, enabled: e.target.checked } })} />
+                <div className="checkbox-wrapper-30">
+                  <span className="checkbox">
+                    <input type="checkbox" checked={rules.start.enabled} onChange={(e) => setRules({ ...rules, start: { ...rules.start, enabled: e.target.checked } })} />
+                    <svg><use xlinkHref="#checkbox-30" className="checkbox"></use></svg>
+                  </span>
+                </div>
+                <select
+                  value={rules.start.mode}
+                  onChange={(e) => setRules({ ...rules, start: { ...rules.start, mode: e.target.value as Rules['start']['mode'] } })}
+                >
+                  <option value="must_start">must start</option>
+                  <option value="must_not_start">must not start</option>
+                </select>
+                with letter
+                <input
+                  value={rules.start.letter}
+                  onChange={(e) => {
+                    const v = (e.target.value || '').replace(/[^a-z]/gi, '').slice(0, 1).toLowerCase()
+                    setRules({ ...rules, start: { ...rules.start, letter: v } })
+                  }}
+                  placeholder="a"
+                  style={{ width: 40 }}
+                />
+              </label>
+
+              <label className="rule-row">
+                <div className="checkbox-wrapper-30">
+                  <span className="checkbox">
+                    <input type="checkbox" checked={rules.end.enabled} onChange={(e) => setRules({ ...rules, end: { ...rules.end, enabled: e.target.checked } })} />
+                    <svg><use xlinkHref="#checkbox-30" className="checkbox"></use></svg>
+                  </span>
+                </div>
                 <select
                   value={rules.end.mode}
                   onChange={(e) => setRules({ ...rules, end: { ...rules.end, mode: e.target.value as Rules['end']['mode'] } })}
@@ -544,7 +619,12 @@ function App() {
               </label>
 
               <label className="rule-row">
-                <input type="checkbox" checked={rules.length.enabled} onChange={(e) => setRules({ ...rules, length: { ...rules.length, enabled: e.target.checked } })} />
+                <div className="checkbox-wrapper-30">
+                  <span className="checkbox">
+                    <input type="checkbox" checked={rules.length.enabled} onChange={(e) => setRules({ ...rules, length: { ...rules.length, enabled: e.target.checked } })} />
+                    <svg><use xlinkHref="#checkbox-30" className="checkbox"></use></svg>
+                  </span>
+                </div>
                 <select
                   value={rules.length.mode}
                   onChange={(e) => setRules({ ...rules, length: { ...rules.length, mode: e.target.value as Rules['length']['mode'] } })}
@@ -565,7 +645,12 @@ function App() {
               </label>
 
               <label className="rule-row">
-                <input type="checkbox" checked={rules.contain.enabled} onChange={(e) => setRules({ ...rules, contain: { ...rules.contain, enabled: e.target.checked } })} />
+                <div className="checkbox-wrapper-30">
+                  <span className="checkbox">
+                    <input type="checkbox" checked={rules.contain.enabled} onChange={(e) => setRules({ ...rules, contain: { ...rules.contain, enabled: e.target.checked } })} />
+                    <svg><use xlinkHref="#checkbox-30" className="checkbox"></use></svg>
+                  </span>
+                </div>
                 <select
                   value={rules.contain.mode}
                   onChange={(e) => setRules({ ...rules, contain: { ...rules.contain, mode: e.target.value as Rules['contain']['mode'] } })}
@@ -596,29 +681,153 @@ function App() {
             <SortableContext items={players.map((p) => p.id)} strategy={verticalListSortingStrategy}>
               <ul className="players-list">
                 {players.map((pl) => (
-                  <SortablePlayerRow
-                    key={pl.id}
-                    player={pl}
-                    onNameChange={(name) =>
-                      setPlayers((prev) =>
-                        prev.map((p) => (p.id === pl.id ? { ...p, name } : p)),
-                      )
-                    }
-                    right={rules.perPlayer ? (
-                      <select
-                        className="player-mode-select"
-                        value={rules.playerModes?.[pl.id] ?? 'global'}
-                        onChange={(e) => setRules((r) => ({
-                          ...r,
-                          playerModes: { ...(r.playerModes ?? {}), [pl.id]: e.target.value as 'global' | 'ignore' },
-                        }))}
-                        title="Rules for this player"
-                      >
-                        <option value="global">use rules</option>
-                        <option value="ignore">ignore rules</option>
-                      </select>
-                    ) : null}
-                  />
+                  <Fragment key={pl.id}>
+                    <SortablePlayerRow
+                      player={pl}
+                      onNameChange={(name) =>
+                        setPlayers((prev) =>
+                          prev.map((p) => (p.id === pl.id ? { ...p, name } : p))
+                        )
+                      }
+                      right={rules.perPlayer ? (
+                        <button
+                          className="icon-button"
+                          onClick={() => {
+                            setPlayerRulesOpen((m) => ({ ...m, [pl.id]: !m[pl.id] }))
+                            setRules((r) => ({
+                              ...r,
+                              playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' },
+                              playerRules: {
+                                ...(r.playerRules ?? {}),
+                                [pl.id]: r.playerRules?.[pl.id] ?? {
+                                  start: { enabled: false, mode: 'must_start', letter: '' },
+                                  end: { enabled: false, mode: 'must_end', letter: '' },
+                                  length: { enabled: false, mode: 'must_be', value: null },
+                                  contain: { enabled: false, mode: 'must_contain', letter: '' },
+                                },
+                              },
+                            }))
+                          }}
+                          title="Player rules"
+                        >
+                          {playerRulesOpen[pl.id] ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </button>
+                      ) : null}
+                    />
+                    {rules.perPlayer && playerRulesOpen[pl.id] && (
+                      <li className="player-rules-li">
+                        <div className="rules">
+                          {(() => {
+                            const pr = rules.playerRules?.[pl.id] ?? { start: { enabled: false, mode: 'must_start', letter: '' }, end: { enabled: false, mode: 'must_end', letter: '' }, length: { enabled: false, mode: 'must_be', value: null }, contain: { enabled: false, mode: 'must_contain', letter: '' } }
+                            return (
+                              <>
+                                <label className="rule-row">
+                                  <div className="checkbox-wrapper-30">
+                                    <span className="checkbox">
+                                      <input type="checkbox" checked={pr.start.enabled} onChange={(e) => setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, start: { ...pr.start, enabled: e.target.checked } } } }))} />
+                                      <svg><use xlinkHref="#checkbox-30" className="checkbox"></use></svg>
+                                    </span>
+                                  </div>
+                                  <select
+                                    value={pr.start.mode}
+                                    onChange={(e) => setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, start: { ...pr.start, mode: e.target.value as Rules['start']['mode'] } } } }))}
+                                  >
+                                    <option value="must_start">must start</option>
+                                    <option value="must_not_start">must not start</option>
+                                  </select>
+                                  with letter
+                                  <input
+                                    value={pr.start.letter}
+                                    onChange={(e) => {
+                                      const v = (e.target.value || '').replace(/[^a-z]/gi, '').slice(0, 1).toLowerCase()
+                                      setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, start: { ...pr.start, letter: v } } } }))
+                                    }}
+                                    placeholder="a"
+                                    style={{ width: 40 }}
+                                  />
+                                </label>
+                                <label className="rule-row">
+                                  <div className="checkbox-wrapper-30">
+                                    <span className="checkbox">
+                                      <input type="checkbox" checked={pr.end.enabled} onChange={(e) => setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, end: { ...pr.end, enabled: e.target.checked } } } }))} />
+                                      <svg><use xlinkHref="#checkbox-30" className="checkbox"></use></svg>
+                                    </span>
+                                  </div>
+                                  <select
+                                    value={pr.end.mode}
+                                    onChange={(e) => setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, end: { ...pr.end, mode: e.target.value as Rules['end']['mode'] } } } }))}
+                                  >
+                                    <option value="must_end">must end</option>
+                                    <option value="must_not_end">must not end</option>
+                                  </select>
+                                  with letter
+                                  <input
+                                    value={pr.end.letter}
+                                    onChange={(e) => {
+                                      const v = (e.target.value || '').replace(/[^a-z]/gi, '').slice(0, 1).toLowerCase()
+                                      setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, end: { ...pr.end, letter: v } } } }))
+                                    }}
+                                    placeholder="a"
+                                    style={{ width: 40 }}
+                                  />
+                                </label>
+                                <label className="rule-row">
+                                  <div className="checkbox-wrapper-30">
+                                    <span className="checkbox">
+                                      <input type="checkbox" checked={pr.length.enabled} onChange={(e) => setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, length: { ...pr.length, enabled: e.target.checked } } } }))} />
+                                      <svg><use xlinkHref="#checkbox-30" className="checkbox"></use></svg>
+                                    </span>
+                                  </div>
+                                  <select
+                                    value={pr.length.mode}
+                                    onChange={(e) => setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, length: { ...pr.length, mode: e.target.value as Rules['length']['mode'] } } } }))}
+                                  >
+                                    <option value="must_be">must be</option>
+                                    <option value="must_not_be">must not be</option>
+                                  </select>
+                                  <input
+                                    value={pr.length.value ?? ''}
+                                    onChange={(e) => {
+                                      const v = e.target.value.replace(/[^0-9]/g, '')
+                                      setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, length: { ...pr.length, value: v ? Number(v) : null } } } }))
+                                    }}
+                                    placeholder="5"
+                                    style={{ width: 60 }}
+                                  />
+                                  letters long
+                                </label>
+                                <label className="rule-row">
+                                  <div className="checkbox-wrapper-30">
+                                    <span className="checkbox">
+                                      <input type="checkbox" checked={pr.contain.enabled} onChange={(e) => setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, contain: { ...pr.contain, enabled: e.target.checked } } } }))} />
+                                      <svg><use xlinkHref="#checkbox-30" className="checkbox"></use></svg>
+                                    </span>
+                                  </div>
+                                  <select
+                                    value={pr.contain.mode}
+                                    onChange={(e) => setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, contain: { ...pr.contain, mode: e.target.value as Rules['contain']['mode'] } } } }))}
+                                  >
+                                    <option value="must_contain">must contain</option>
+                                    <option value="must_not_contain">must not contain</option>
+                                  </select>
+                                  letter
+                                  <input
+                                    value={pr.contain.letter}
+                                    onChange={(e) => {
+                                      const v = (e.target.value || '').replace(/[^a-z]/gi, '').slice(0, 1).toLowerCase()
+                                      setRules((r) => ({ ...r, playerModes: { ...(r.playerModes ?? {}), [pl.id]: 'custom' }, playerRules: { ...(r.playerRules ?? {}), [pl.id]: { ...pr, contain: { ...pr.contain, letter: v } } } }))
+                                    }}
+                                    placeholder="a"
+                                    style={{ width: 40 }}
+                                  />
+                                </label>
+                              </>
+                            )
+                          })()}
+                        </div>
+                      </li>
+                    )}
+                    </Fragment>
                 ))}
               </ul>
             </SortableContext>

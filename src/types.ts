@@ -17,9 +17,12 @@ export type DefinitionRecord = {
   source: 'dictionaryapi.dev' | 'freedictionaryapi.com' | 'wiktionary'
 }
 
-export type Rules = {
-  perPlayer?: boolean
-  playerModes?: Record<string, 'global' | 'ignore'>
+export type RuleSet = {
+  start: {
+    enabled: boolean
+    mode: 'must_start' | 'must_not_start'
+    letter: string // single lowercase letter
+  }
   end: {
     enabled: boolean
     mode: 'must_end' | 'must_not_end'
@@ -36,3 +39,9 @@ export type Rules = {
     letter: string // single lowercase letter
   }
 }
+
+export type Rules = {
+  perPlayer?: boolean
+  playerModes?: Record<string, 'global' | 'ignore' | 'custom'>
+  playerRules?: Record<string, RuleSet>
+} & RuleSet

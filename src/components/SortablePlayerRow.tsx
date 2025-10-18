@@ -24,12 +24,12 @@ export default function SortablePlayerRow({
         <GripVertical size={16} />
       </div>
       <input className="name" value={player.name} onChange={(e) => onNameChange(e.target.value)} />
-      {right}
       {player.isBot ? (
         <span className="bot-pill"><BotIcon size={16} /> Bot</span>
       ) : (
         <span className="bot-pill"><UserIcon size={16} /> Human</span>
       )}
+      {right}
     </li>
   )
 }
